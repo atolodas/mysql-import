@@ -21,7 +21,8 @@
 			`categories`,
 			`categories_description`,
 			`manufacturers`,
-			`manufacturers_info`;
+			`manufacturers_info`,
+			`percentage`;
 			
 
 
@@ -310,19 +311,57 @@ COMMIT;
 
 -- -> QUERY 4
 
+
 START TRANSACTION;
 
 
+CREATE TABLE percentage ( id_specific_price int(10) NOT NULL DEFAULT '0',
+						 products_id int(11) NOT NULL DEFAULT '0',
+						 prod_qty mediumint(8) NOT NULL DEFAULT '0',
+						 price decimal(20,6) NOT NULL DEFAULT '0',
+						 products_price decimal(20,6) NOT NULL DEFAULT '0',
+						 division decimal(20,6) NOT NULL DEFAULT '0',
+						 substract decimal(20,6) NOT NULL DEFAULT '0' );
+
+
 INSERT
-IGNORE INTO `ps_specific_price` (`id_specific_price`, `id_product`, `price`, `from_quantity`)
+IGNORE INTO `percentage` (`id_specific_price`, `products_id`, `prod_qty`, `products_price`)
 SELECT `products_price_break_id`,
        `products_id`,
-       `products_price`,
-       `products_qty`
+       `products_qty`,
+       `products_price`
 FROM `products_price_break`;
 
 
-DROP TABLE `products_price_break`;
+UPDATE percentage,
+       ps_product
+SET percentage.price = ps_product.price
+WHERE percentage.products_id = ps_product.id_product;
+
+
+UPDATE `percentage`
+SET `division` = `products_price` / `price`,
+    `substract` = 1 - `division`
+ORDER BY `id_specific_price`;
+
+
+INSERT
+IGNORE INTO `ps_specific_price` (`id_specific_price`, `id_product`, `reduction`, `from_quantity`)
+SELECT `id_specific_price`,
+       `products_id`,
+       `substract`,
+       `prod_qty`
+FROM `percentage`;
+
+
+UPDATE `ps_specific_price`
+SET `reduction_type` = 'percentage',
+    `id_shop` = '1',
+    `price` = '-1.000000';
+
+
+DROP TABLE `products_price_break`,
+           `percentage`;
 
 
 COMMIT;
